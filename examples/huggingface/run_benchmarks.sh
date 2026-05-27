@@ -1,4 +1,27 @@
 #!/bin/bash
+#SBATCH --argos=no
+#SBATCH --account=project_2001659
+#SBATCH --partition=gpumedium
+#SBATCH --time=60
+#SBATCH --tasks-per-node=1
+#SBATCH --gres=gpu:gh200:4
+#SBATCH --nodes=1
+#SBATCH --mem=240G
+#SBATCH --cpus-per-task=288
+
+module purge
+module load csc-tools
+module load python-pytorch
+
+source /scratch/project_2001659/amoisala/Liger-Kernel/venv/bin/activate
+
+# We are putting the cache in the ramdisk, stored in
+# memory. Alternatively store it to the project's scratch.
+
+#export HF_HOME=/scratch/$SLURM_JOB_ACCOUNT/$USER/hf-cache/
+export HF_HOME=/dev/shm/$USER/hf-cache
+export TORCHINDUCTOR_CACHE_DIR=/dev/shm/$USER/
+mkdir -p $HF_HOME
 
 ## Benchmarking Script
 ## Runs the training script with different configurations and logs the results
@@ -11,8 +34,8 @@ NUM_REP=5
 MAX_STEPS=20
 DATASET_PATH="tatsu-lab/alpaca"
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-mkdir -p "${SCRIPT_DIR}/results"
+RESULTS_DIR=./results
+mkdir -p $RESULTS_DIR
 
 for USE_LIGER in "${USE_LIGER_VALUES[@]}"; do
     for BATCH_SIZE in "${BATCH_SIZE_VALUES[@]}"; do
@@ -20,10 +43,10 @@ for USE_LIGER in "${USE_LIGER_VALUES[@]}"; do
 
         for ((i=1; i<=NUM_REP; i++)); do
 
-            LOG_FILE="${SCRIPT_DIR}/results/${MODEL_TYPE}_use_liger_${USE_LIGER}_batch_size_${BATCH_SIZE}_rep_${i}.log"
+            LOG_FILE="${RESULTS_DIR}/${MODEL_TYPE}_use_liger_${USE_LIGER}_batch_size_${BATCH_SIZE}_rep_${i}.log"
 
-            torchrun --nnodes=1 --nproc-per-node=4 training.py \
-                --bf16 \
+            if python -m torch.distributed.run --nnodes=1 --nproc-per-node=4 training.py \
+                --bf16 True \
                 --num_train_epochs 1 \
                 --max_steps $MAX_STEPS \
                 --model_name $MODEL_PATH \
@@ -44,8 +67,21 @@ for USE_LIGER in "${USE_LIGER_VALUES[@]}"; do
                 --seed 42 \
                 --use_liger $USE_LIGER \
                 --output_dir model_output_dir \
-                > $LOG_FILE
+		        --gradient_checkpointing False \
+                --max_seq_length 512 \
+                > "$LOG_FILE" 2>&1
+            then
+                echo "Run succeeded"
+            else
+                EXIT_CODE=$?
+                echo "Run failed with exit code $EXIT_CODE" | tee -a "$LOG_FILE"
 
+                if grep -qi "out of memory" "$LOG_FILE"; then
+                    echo "OOM detected, continuing benchmark..." | tee -a "$LOG_FILE"
+                else
+                    echo "Non-OOM failure, continuing anyway..." | tee -a "$LOG_FILE"
+                fi
+            fi
             sleep 5
         done
     done
