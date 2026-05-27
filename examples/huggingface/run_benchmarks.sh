@@ -18,9 +18,7 @@ source /scratch/project_2001659/amoisala/Liger-Kernel/venv/bin/activate
 # We are putting the cache in the ramdisk, stored in
 # memory. Alternatively store it to the project's scratch.
 
-#export HF_HOME=/scratch/$SLURM_JOB_ACCOUNT/$USER/hf-cache/
-export HF_HOME=/dev/shm/$USER/hf-cache
-export TORCHINDUCTOR_CACHE_DIR=/dev/shm/$USER/
+export HF_HOME=/scratch/$SLURM_JOB_ACCOUNT/$USER/hf-cache/
 mkdir -p $HF_HOME
 
 ## Benchmarking Script
