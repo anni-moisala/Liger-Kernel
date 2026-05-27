@@ -3,7 +3,7 @@ import datasets
 import torch
 import transformers
 from callback import EfficiencyCallback
-from trl import SFTTrainer
+from trl import SFTTrainer, SFTConfig
 
 from liger_kernel.transformers import AutoLigerKernelForCausalLM
 
