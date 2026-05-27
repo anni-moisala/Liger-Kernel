@@ -24,7 +24,7 @@ def formatting_prompts_func(example):
 
 
 def train():
-    parser = transformers.HfArgumentParser((transformers.TrainingArguments, CustomArguments))
+    parser = transformers.HfArgumentParser((SFTConfig, CustomArguments))
     training_args, custom_args = parser.parse_args_into_dataclasses()
     tokenizer = transformers.AutoTokenizer.from_pretrained(
         custom_args.model_name,
@@ -37,11 +37,6 @@ def train():
     train_dataset = dataset["train"]
     eval_dataset = dataset["test"]
     response_prompt = tokenizer.encode("### Response:\n", add_special_tokens=False)
-    collator = DataCollatorForCompletionOnlyLM(
-        tokenizer=tokenizer,
-        response_template=response_prompt,
-        pad_to_multiple_of=16,
-    )
 
     if custom_args.use_liger:
         model = AutoLigerKernelForCausalLM.from_pretrained(
@@ -51,8 +46,8 @@ def train():
             dtype=torch.bfloat16,
             # These args will get passed to the appropriate apply_liger_kernel_to_* function
             # to override the default settings
-            # cross_entropy=True,
-            # fused_linear_cross_entropy=False,
+            cross_entropy=True,
+            fused_linear_cross_entropy=False,
         )
     else:
         model = transformers.AutoModelForCausalLM.from_pretrained(
@@ -65,8 +60,6 @@ def train():
     trainer = SFTTrainer(
         model=model,
         args=training_args,
-        data_collator=collator,
-        max_seq_length=custom_args.max_seq_length,
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
         formatting_func=formatting_prompts_func,
