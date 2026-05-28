@@ -21,10 +21,10 @@ mkdir -p $HF_HOME
 ## Benchmarking Script
 ## Runs the training script with different configurations and logs the results
 
-MODEL_TYPE="mistral"
-MODEL_PATH="mistralai/Mistral-7B-v0.1"
+MODEL_TYPE="qwen"
+MODEL_PATH="Qwen/Qwen2-7B"
 USE_LIGER_VALUES=("True" "False")
-BATCH_SIZE_VALUES=(64 128 192)
+BATCH_SIZE_VALUES=(32 48 64)
 NUM_REP=5
 MAX_STEPS=20
 DATASET_PATH="tatsu-lab/alpaca"
