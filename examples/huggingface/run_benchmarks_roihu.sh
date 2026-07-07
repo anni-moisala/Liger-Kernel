@@ -1,5 +1,4 @@
 #!/bin/bash
-#SBATCH --argos=no
 #SBATCH --account=project_2001659
 #SBATCH --partition=gpumedium
 #SBATCH --time=60
